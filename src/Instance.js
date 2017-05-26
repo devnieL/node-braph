@@ -7,11 +7,34 @@ var non_instance_object_properties = ['_braph', '_class', '_schema'];
 
 import Controller from './Controller';
 
+var log = require("bunyan").createLogger({
+	name : "Instance.js",
+	level : "debug",
+	serializers : {
+		metadata : function(metadata) {
+			return JSON.stringify(metadata, null, 2);
+		},
+		params : function(params) {
+			return JSON.stringify(params, null, 2);
+		},
+		db_results : function(db_results){
+			return JSON.stringify(db_results, null, 2);
+		}
+	}
+});
+
 export default class Instance {
 
     constructor(properties){
+
+        this._id = null;
+        
         if(properties && this.setProperties)
             this.setProperties(properties);
+    }
+
+    static get PRIMITIVE_TYPES() {
+        return ['string', 'number', 'date', 'object', 'image'];
     }
 
     static set braph(value){
@@ -155,14 +178,24 @@ export default class Instance {
 
         if(self.getProperties){
             
-            var props = self.getProperties()
+            var props = self.getProperties();
+
             for(var i in props){
                 if(non_instance_object_properties.indexOf(props[i]) == '-1'){
+
                     var property = {
-                        name : i,
-                        value : props[i],
-                        type : self.constructor.schema[i] || 'string'
+                        name : i
                     };
+
+                    if (Instance.PRIMITIVE_TYPES.indexOf(self.constructor.schema[i]) == -1){
+                        property.type = "object";
+                        property.class = self.constructor.schema[i];
+                        property.value = props[i].id;
+                    }else{
+                        property.type = self.constructor.schema[i];
+                        property.value = props[i];
+                    }
+
                     properties.push(property);
                 }
             }
@@ -173,12 +206,22 @@ export default class Instance {
 
             for(var i in property_names){
                 if(non_instance_object_properties.indexOf(property_names[i]) == '-1'){
+                    
                     var property = {
-                        name : property_names[i],
-                        value : self[property_names[i]],
-                        type : self.constructor.schema[property_names[i]] || 'string'
+                        name : i
                     };
+
+                    if (Instance.PRIMITIVE_TYPES.indexOf(self.constructor.schema[i]) == -1){
+                        property.type = "object";
+                        property.class = self.constructor.schema[i];
+                        property.value = props[i].id;
+                    }else{
+                        property.type = self.constructor.schema[i];
+                        property.value = props[i];
+                    }
+
                     properties.push(property);
+
                 }
             }
 
@@ -264,6 +307,45 @@ export default class Instance {
 
     }
 
+    delete(callback){
+
+        var self = this;
+
+        async.waterfall([
+
+            function(cb){
+                self.constructor.braph.getAccessToken(cb);
+            },
+
+            function(access_token, cb){
+                request({
+                    url : (self.constructor.braph.api_url || API_URL) + "/braph/" + self.constructor.braph.id + "/instances/" + self.id,
+                    method: "DELETE", 
+                    json: true,
+                    headers : {
+                        'Authorization' : 'Bearer ' + access_token.token
+                    }
+                }, function (error, res, body) {
+
+                    if(error) {
+                        console.error(error);
+                        return cb(error);
+                    }
+
+                    if(res.statusCode > 400) {
+                        console.error(body);
+                        return cb(body);
+                    }
+
+                    self.id = null;
+                    cb(null, self);
+                });
+            }
+            
+        ], callback);
+
+    }
+
     static read(id, callback){
 
         var self = this;
@@ -320,6 +402,131 @@ export default class Instance {
                     if(res.statusCode > 400) return cb(body);
 
                     async.map(body.data.results, function(result, next){
+                        next(null, self.fromJSON(result));
+                    }, function(err, _results){
+
+                        if(error) {
+                            console.error(error);
+                            return cb(error);
+                        }
+
+                        return cb(null, _results);
+                    });
+
+                });
+            }
+            
+        ], callback);
+
+    }
+
+    /**
+     * Transform a minimalist query into the proper
+     * query format understandable by Braph.
+     * 
+     * TODO: A graph-ql parser. 
+     * TODO: Improve query format, specially for default properties.
+     * 
+     * Query example : 
+     * 
+     * {
+     *  title : 'A example title',
+     *  author : {
+     *   email : 'example@braph.com'
+     *  }
+     * }
+     * 
+     * Query example for default properties : 
+     * 
+     * {
+     *  _id : 32,
+     *  _name : 'An example title'
+     * }
+     * 
+     * 
+     * @static
+     * @param {JSON} query 
+     * 
+     * @memberOf Instance
+     */
+    static parseQuery(query){
+
+        log.debug({
+            query : query
+        }, "Instance.parseQuery");
+
+        var self = this;
+
+        // Use schema to get the property
+        // types.
+
+        var schema = this.schema;
+
+        var bquery = {
+            class : this.name,
+            name : null,
+            properties : []
+        }
+
+        for(var i in schema){
+
+            var property = {};
+
+            if (Instance.PRIMITIVE_TYPES.indexOf(self.schema[i]) == -1){
+                property.name = i;
+                property.type = "object";
+                property.class = self.schema[i];
+                property.value = query.properties[i].id;
+            }else{
+                property.type = self.schema[i];
+                property.value = query.properties[i];
+                property.name = i;
+            }
+
+            bquery.properties.push(property)
+        }
+
+        log.debug({
+            query : query,
+            bquery : bquery
+        }, "Instance.parseQuery | result : ");
+
+        return bquery;
+
+    }
+
+    static query(query, callback){
+
+        var self = this;
+
+        async.waterfall([
+
+            function(cb){
+                self.braph.getAccessToken(cb);
+            },
+
+            function(access_token, cb){
+                request({
+                    url : (self.braph.api_url || API_URL) + "/braph/" + self.braph.id + "/instances/query",
+                    body : {
+                        query : self.parseQuery(query)
+                    },
+                    method: "GET", 
+                    json: true,
+                    headers : {
+                        'Authorization' : 'Bearer ' + access_token.token
+                    }
+                }, function (error, res, body) {
+                    
+                    log.debug({
+                        error : error,
+                        body : body
+                    }, self.name + '.query | results: ');
+
+                    if(error) return cb(error);
+                    if(res.statusCode > 400) return cb(body);
+
+                    async.map(body.data, function(result, next){
                         next(null, self.fromJSON(result));
                     }, function(err, _results){
 
