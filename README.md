@@ -17,7 +17,7 @@ module.exports.Braph = new Braph({
   id : 'braph_id',
   client_id : 'client_id',
   client_secret : 'client_secret',
-  api_url : 'https://api.braph.com/alpha/v1'
+  api_url : 'https://api.braph.com/v1'
 });
 ```
 
