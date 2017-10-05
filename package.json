@@ -1,6 +1,6 @@
 {
   "name": "braph",
-  "version": "0.0.2-alpha",
+  "version": "0.0.3-alpha",
   "description": "The official NodeJS client for Braph",
   "main": "./lib/index.js",
   "scripts": {

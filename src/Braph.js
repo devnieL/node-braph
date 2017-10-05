@@ -14,6 +14,9 @@ export default class Braph {
         }
 
         this.api_url = data.api_url;
+
+        this.rejectUnauthorizedSSL = (data.rejectUnauthorizedSSL != null) ? data.rejectUnauthorizedSSL : true;
+
     }
 
     get id(){
@@ -38,8 +41,9 @@ export default class Braph {
         
         request({
             url : (self.api_url || API_URL) + "/oauth/token",
-            method: "POST", 
+            method: "POST",
             json: true,
+            rejectUnauthorized:  self.rejectUnauthorizedSSL,            
             body: {
                 grant_type: 'client_credentials',
                 client_id: this.credentials.client_id,
@@ -78,6 +82,7 @@ export default class Braph {
                     url : (self.api_url || API_URL) + "/braph/" + self.id,
                     method: "GET", 
                     json: true,
+                    rejectUnauthorized:  self.rejectUnauthorizedSSL,
                     headers : {
                         'Authorization' : 'Bearer ' + access_token.token
                     }
@@ -106,6 +111,7 @@ export default class Braph {
                 request({
                     url : (self.api_url || API_URL) + "/braph/" + self.id + "/instances/",
                     method: "GET", 
+                    rejectUnauthorized:  self.rejectUnauthorizedSSL,
                     json: true,
                     headers : {
                         'Authorization' : 'Bearer ' + access_token.token
@@ -138,6 +144,7 @@ export default class Braph {
                 request({
                     url : (self.api_url || API_URL) + "/braph/" + self.id + "/classes/",
                     method: "GET", 
+                    rejectUnauthorized:  self.rejectUnauthorizedSSL,
                     json: true,
                     headers : {
                         'Authorization' : 'Bearer ' + access_token.token
@@ -169,6 +176,7 @@ export default class Braph {
                 request({
                     url : (self.api_url || API_URL) + "/braph/" + self.id + "/login",
                     method: "POST", 
+                    rejectUnauthorized:  self.rejectUnauthorizedSSL,
                     json: true,
                     headers : {
                         'BG-Auth-Token' : req.query.access_token
@@ -202,6 +210,7 @@ export default class Braph {
                     url : (self.api_url || API_URL) + "/braph/" + self.id + "/middleware/b_auth_token",
                     method: req.method, 
                     json: true,
+                    rejectUnauthorized:  self.rejectUnauthorizedSSL,
                     headers : {
                         'B-Auth-Token' : req.query.access_token
                     },

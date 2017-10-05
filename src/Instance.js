@@ -7,22 +7,6 @@ var non_instance_object_properties = ['_braph', '_class', '_schema'];
 
 import Controller from './Controller';
 
-var log = require("bunyan").createLogger({
-	name : "Instance.js",
-	level : "debug",
-	serializers : {
-		metadata : function(metadata) {
-			return JSON.stringify(metadata, null, 2);
-		},
-		params : function(params) {
-			return JSON.stringify(params, null, 2);
-		},
-		db_results : function(db_results){
-			return JSON.stringify(db_results, null, 2);
-		}
-	}
-});
-
 export default class Instance {
 
     constructor(properties){
@@ -34,23 +18,23 @@ export default class Instance {
     }
 
     static get PRIMITIVE_TYPES() {
-        return ['string', 'number', 'date', 'object', 'image'];
+        return ['string', 'number', 'date', 'image', 'boolean'];
     }
 
     static set braph(value){
-        this.constructor._braph = value;
+        this._braph = value;
     }
 
     static get braph(){
-        return this.constructor._braph;
+        return this._braph;
     }
 
     static set schema(value){
-        this.constructor._schema = value;
+        this._schema = value;
     }
 
     static get schema(){
-        return this.constructor._schema;
+        return this._schema;
     }
 
     // Id
@@ -162,9 +146,17 @@ export default class Instance {
         
     }
 
-    toJSON(){
+    /**
+     * 
+     * 
+     * @param {Boolean} propertiesAsObject 
+     * @returns 
+     * @memberof Instance
+     */
+    toJSON(propertiesAsObject){
 
-        var self = this
+        var self = this;
+        var propertiesAsObject = (propertiesAsObject != null) ? propertiesAsObject : false;
         
         // Class
         // The class name is gotten from the class property or the name
@@ -226,8 +218,7 @@ export default class Instance {
             }
 
         }
-        
-
+    
         var instance = {
             id : self.id,
             class : classname,
@@ -451,9 +442,9 @@ export default class Instance {
      */
     static parseQuery(query){
 
-        log.debug({
+        /*log.debug({
             query : query
-        }, "Instance.parseQuery");
+        }, "Instance.parseQuery");*/
 
         var self = this;
 
@@ -486,10 +477,10 @@ export default class Instance {
             bquery.properties.push(property)
         }
 
-        log.debug({
+        /*log.debug({
             query : query,
             bquery : bquery
-        }, "Instance.parseQuery | result : ");
+        }, "Instance.parseQuery | result : ");*/
 
         return bquery;
 
@@ -518,10 +509,10 @@ export default class Instance {
                     }
                 }, function (error, res, body) {
                     
-                    log.debug({
+                    /*log.debug({
                         error : error,
                         body : body
-                    }, self.name + '.query | results: ');
+                    }, self.name + '.query | results: ');*/
 
                     if(error) return cb(error);
                     if(res.statusCode > 400) return cb(body);

@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+console.log("process.env.NODE_TLS_REJECT_UNAUTHORIZED", process.env.NODE_TLS_REJECT_UNAUTHORIZED);
+
 import chai from 'chai';
 chai.should();
 
@@ -277,7 +279,7 @@ describe('Instance Tests', () => {
                     INSTANCES_TO_DELETE.push(place);
 
                     place.save(function(err){
-                        if(err) return c(err);
+                        if(err) return cb(err);
                         cb(null, place);
                     });
                     
@@ -323,6 +325,60 @@ describe('Instance Tests', () => {
 
                 done();
             });
+
+        }).timeout(0);
+
+        it('- each inherited instance class should keep his own schema', (done) => {
+
+            class Place extends Instance {
+
+                getProperties() {
+                    return {
+                        name : this.name
+                    }
+                }
+
+            }
+
+            Place.braph = BRAPH;
+
+            Place.schema = {
+                name : 'string'
+            }
+
+            class Pichanga extends Instance {
+
+                getProperties() {
+                    return {
+                        goles : this.goles,
+                        jugadores : this.jugadores,
+                        place : this.place
+                    }
+                }
+
+            }
+
+            Pichanga.braph = BRAPH;
+
+            Pichanga.schema = {
+                goles : 'number',
+                jugadores : 'number',
+                place : 'Place'
+            };
+        
+            assert.equal(JSON.stringify(Place.schema), JSON.stringify({
+                name : 'string'
+            }));
+
+            assert.equal(JSON.stringify(Pichanga.schema), JSON.stringify({
+                goles : 'number',
+                jugadores : 'number',
+                place : 'Place'
+            }));
+
+            assert.notEqual(Place.schema, Pichanga.schema);
+
+            done();
 
         }).timeout(0);
 
